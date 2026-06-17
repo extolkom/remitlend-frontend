@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarRange, CircleDollarSign, HandCoins, ShieldCheck } from "lucide-react";
-import { ErrorBoundary } from "../../components/global_ui/ErrorBoundary";
+import { QueryErrorBoundary } from "../../components/global_ui/ErrorBoundary";
+import { QueryError } from "../../components/ui/QueryError";
 import { LoansListSkeleton } from "../../components/skeletons/LoansListSkeleton";
 import { useBorrowerLoansPage } from "../../hooks/useApi";
 import { LoanStatusBadge } from "../../components/ui/LoanStatusBadge";
@@ -39,6 +40,7 @@ export function LoansPageClient() {
     data: loansPage,
     isLoading,
     isError,
+    refetch,
   } = useBorrowerLoansPage(address ?? undefined, {
     limit: PAGE_SIZE,
     cursor: pageCursors[page] ?? null,
@@ -80,8 +82,11 @@ export function LoansPageClient() {
 
   if (isError) {
     return (
-      <section className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-        Failed to load loans. Please reconnect your wallet and try again.
+      <section className="py-4">
+        <QueryError
+          message="Failed to load loans. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
       </section>
     );
   }
@@ -100,7 +105,7 @@ export function LoansPageClient() {
         </div>
       </header>
 
-      <ErrorBoundary scope="loan summary cards" variant="section">
+      <QueryErrorBoundary scope="loan summary cards" variant="section">
         <div className="grid gap-4 md:grid-cols-3">
           {[
             {
@@ -133,9 +138,9 @@ export function LoansPageClient() {
             </article>
           ))}
         </div>
-      </ErrorBoundary>
+      </QueryErrorBoundary>
 
-      <ErrorBoundary scope="loan list" variant="section">
+      <QueryErrorBoundary scope="loan list" variant="section">
         <div className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
           <div className="flex flex-wrap gap-2">
             {[
@@ -239,7 +244,7 @@ export function LoansPageClient() {
             />
           )}
         </div>
-      </ErrorBoundary>
+      </QueryErrorBoundary>
     </section>
   );
 }

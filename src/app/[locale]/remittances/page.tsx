@@ -21,11 +21,12 @@ import {
 } from "../../stores/useWalletStore";
 import { useRemittancesPage, type Remittance } from "../../hooks/useApi";
 import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Card";
-import { ErrorBoundary } from "../../components/global_ui/ErrorBoundary";
-import { Spinner } from "../../components/global_ui/Spinner";
+import { QueryErrorBoundary } from "../../components/global_ui/ErrorBoundary";
+import { QueryError } from "../../components/ui/QueryError";
+import { RemittancesSkeleton } from "../../components/skeletons/RemittancesSkeleton";
 import { PaginationControls } from "../../components/ui/PaginationControls";
-import Link from "next/link";
 import { EmptyState } from "../../components/ui/EmptyState";
+import Link from "next/link";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
@@ -103,6 +104,7 @@ export default function RemittancesPage() {
     data: remittancesPage,
     isLoading,
     isError,
+    refetch,
   } = useRemittancesPage(
     {
       limit: PAGE_SIZE,
@@ -172,7 +174,7 @@ export default function RemittancesPage() {
         </Link>
       </header>
 
-      <ErrorBoundary scope="remittance stats" variant="section">
+      <QueryErrorBoundary scope="remittance stats" variant="section">
         <section
           aria-label="Summary Statistics"
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
@@ -218,7 +220,7 @@ export default function RemittancesPage() {
             </article>
           ))}
         </section>
-      </ErrorBoundary>
+      </QueryErrorBoundary>
 
       <Card>
         <CardHeader>
@@ -311,18 +313,15 @@ export default function RemittancesPage() {
         </CardContent>
       </Card>
 
-      <ErrorBoundary scope="remittances table" variant="section">
+      <QueryErrorBoundary scope="remittances table" variant="section">
         <section aria-label="Remittance history">
           {isLoading ? (
-            <div className="flex justify-center py-20">
-              <Spinner type="spin" size={32} />
-            </div>
+          <RemittancesSkeleton />
           ) : isError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/50 dark:bg-red-950/20">
-              <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                Failed to load remittances. Please try again.
-              </p>
-            </div>
+            <QueryError
+              message="Failed to load remittances. Check your connection and try again."
+              onRetry={() => refetch()}
+            />
           ) : remittances.length === 0 ? (
             <EmptyState
               icon={SendHorizontal}
@@ -407,7 +406,7 @@ export default function RemittancesPage() {
             </div>
           )}
         </section>
-      </ErrorBoundary>
+      </QueryErrorBoundary>
 
       {!isLoading && !isError && remittances.length > 0 && (
         <PaginationControls

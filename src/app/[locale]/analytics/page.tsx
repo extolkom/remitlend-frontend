@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FinancialPerformanceDashboard } from "../../components/dashboards/FinancialPerformanceDashboard";
-import { ErrorBoundary } from "../../components/global_ui/ErrorBoundary";
+import { QueryErrorBoundary } from "../../components/global_ui/ErrorBoundary";
 import { useWalletStore, selectWalletAddress } from "../../stores/useWalletStore";
 
 type ViewType = "borrower" | "lender";
@@ -38,13 +38,13 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      <ErrorBoundary scope="analytics dashboard" variant="section">
+      <QueryErrorBoundary scope="analytics dashboard" variant="section">
         <FinancialPerformanceDashboard
           userId={userId}
           userType={view}
           walletAddress={address ?? undefined}
         />
-      </ErrorBoundary>
+      </QueryErrorBoundary>
     </main>
   );
 }
