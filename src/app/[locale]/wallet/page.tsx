@@ -1,5 +1,4 @@
 "use client";
-
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
@@ -21,7 +20,7 @@ import { TransactionsSkeleton } from "../../components/skeletons/TransactionsSke
 import { QueryErrorBoundary } from "../../components/global_ui/ErrorBoundary";
 import { QueryError } from "../../components/ui/QueryError";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { downloadCsv, rowsToCsv } from "../../utils/csv";
+import { downloadCsvAsync } from "../../utils/csv";
 import {
   useWalletStore,
   selectWalletAddress,
@@ -33,6 +32,7 @@ import { useWallet } from "../../components/providers/WalletProvider";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -346,6 +346,7 @@ function TransactionHistoryCard({
 }) {
   const [page, setPage] = useState(1);
   const [pageCursors, setPageCursors] = useState<Record<number, string | null>>({ 1: null });
+  const tWallet = useTranslations("WalletPage");
   const { data, isLoading } = useHorizonPayments(address, horizonUrl, pageCursors[page] ?? null);
   const payments = data?.records ?? [];
   const totalPages = useMemo(() => {
@@ -383,7 +384,7 @@ function TransactionHistoryCard({
     return `${parseFloat(p.amount).toLocaleString("en-US", { maximumFractionDigits: 7 })} ${asset}`;
   }
 
-  function exportCsv() {
+  async function exportCsv() {
     const today = new Date().toISOString().split("T")[0];
     const rows = payments.map((p) => {
       const asset = p.asset_type === "native" ? "XLM" : (p.asset_code ?? "");
@@ -397,8 +398,15 @@ function TransactionHistoryCard({
         stellarExplorerLink: `${explorerBase}/tx/${p.transaction_hash}`,
       };
     });
-
-    downloadCsv(`remitlend-activity-${today}.csv`, rowsToCsv(rows));
+    await downloadCsvAsync(`remitlend-wallet-${today}.csv`, rows, [
+      { key: "date", label: tWallet("csv.date") },
+      { key: "type", label: tWallet("csv.type") },
+      { key: "amount", label: tWallet("csv.amount") },
+      { key: "asset", label: tWallet("csv.asset") },
+      { key: "status", label: tWallet("csv.status") },
+      { key: "transactionHash", label: tWallet("csv.transactionHash") },
+      { key: "stellarExplorerLink", label: tWallet("csv.stellarExplorerLink") },
+    ]);
   }
 
   return (
@@ -553,7 +561,7 @@ export default function WalletPage() {
       )}
 
       {/* Address card */}
-      <QueryErrorBoundary scope="wallet address" variant="section">
+      <QueryErrorBoundary scope="wallet address">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -597,7 +605,7 @@ export default function WalletPage() {
 
       {/* Balances + quick actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <QueryErrorBoundary scope="token balances" variant="section">
+        <QueryErrorBoundary scope="token balances">
           <BalancesCard address={address} horizonUrl={horizonUrl} />
         </QueryErrorBoundary>
 
@@ -658,7 +666,7 @@ export default function WalletPage() {
       </div>
 
       {/* Transaction history from Horizon */}
-      <QueryErrorBoundary scope="transaction history" variant="section">
+      <QueryErrorBoundary scope="transaction history">
         <TransactionHistoryCard
           address={address}
           horizonUrl={horizonUrl}
