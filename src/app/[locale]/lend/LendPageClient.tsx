@@ -34,11 +34,12 @@ import { useSSE } from "../../hooks/useSSE";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Tooltip } from "../../components/ui/Tooltip";
 import {
-  buildAmountHelperText,
-  getPrecisionError,
-  parseAmount,
-  sanitizeAmountInput,
-} from "../../utils/amount";
+  AmountInput,
+  getAmountHelperText,
+  getAmountInputError,
+  getAmountInputErrorId,
+} from "../../components/global_ui/AmountInput";
+import { parseAmount } from "../../utils/amount";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -71,20 +72,15 @@ export function LendPageClient() {
     onFallbackPoll: () => invalidatePoolStats(),
   });
 
-  const depositPrecisionError = getPrecisionError(depositAmount, "USDC");
-  const withdrawPrecisionError = getPrecisionError(withdrawAmount, "USDC");
-  const depositHelper = buildAmountHelperText(depositAmount, "USDC");
-  const withdrawHelper = buildAmountHelperText(withdrawAmount, "USDC");
-
   const handleDeposit = async () => {
     const amount = parseAmount(depositAmount);
-    if (!address || Number.isNaN(amount) || amount <= 0 || depositPrecisionError) return;
+    if (!address || depositAmountError) return;
     await depositOp.executeDeposit({ amount, depositorAddress: address });
   };
 
   const handleWithdraw = async () => {
     const amount = parseAmount(withdrawAmount);
-    if (!address || Number.isNaN(amount) || amount <= 0 || withdrawPrecisionError) return;
+    if (!address || withdrawAmountError) return;
     await withdrawalOp.executeWithdrawal({ amount, depositorAddress: address });
   };
 
@@ -97,6 +93,19 @@ export function LendPageClient() {
   const { data: yieldHistory, isLoading: historyLoading } = useYieldHistory(address ?? undefined, {
     enabled: !!address,
   });
+
+  const depositAmountError = getAmountInputError(depositAmount, {
+    asset: "USDC",
+    required: true,
+  });
+  const withdrawAmountError = getAmountInputError(withdrawAmount, {
+    asset: "USDC",
+    required: true,
+    balance: depositor?.depositAmount,
+    balanceMessage: "Withdrawal amount must not exceed your deposited balance.",
+  });
+  const depositAmountErrorId = getAmountInputErrorId("deposit-amount");
+  const withdrawAmountErrorId = getAmountInputErrorId("withdraw-amount");
 
   const chartData = useMemo(
     () =>
@@ -283,39 +292,29 @@ export function LendPageClient() {
                     handleDeposit();
                   }}
                 >
-                  <label
-                    htmlFor="deposit-amount"
-                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    Deposit Amount
-                  </label>
-                  <input
+                  <AmountInput
                     id="deposit-amount"
-                    type="text"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.0000001"
+                    label="Deposit Amount"
                     value={depositAmount}
-                    onChange={(event) => setDepositAmount(sanitizeAmountInput(event.target.value))}
-                    aria-invalid={depositPrecisionError ? true : undefined}
-                    className={`w-full rounded-xl border bg-zinc-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-900 ${
-                      depositPrecisionError ? "border-red-500" : "border-zinc-200"
+                    onChange={setDepositAmount}
+                    asset="USDC"
+                    required
+                    helperText={getAmountHelperText(depositAmount, "USDC")}
+                    inputClassName={`w-full rounded-xl border bg-zinc-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-900 ${
+                      depositAmountError ? "border-red-500" : "border-zinc-200"
                     }`}
                   />
-                  <p
-                    className={`text-xs ${
-                      depositPrecisionError
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-zinc-500 dark:text-zinc-400"
-                    }`}
-                  >
-                    {depositPrecisionError ?? depositHelper ?? "Up to 7 decimal places supported."}
-                  </p>
                   <button
                     id="deposit-submit"
                     type="submit"
-                    disabled={depositOp.isLoading || !!depositPrecisionError}
-                    aria-describedby={depositOp.isLoading ? "deposit-submit-hint" : undefined}
+                    disabled={depositOp.isLoading || !!depositAmountError}
+                    aria-describedby={
+                      depositAmountError
+                        ? depositAmountErrorId
+                        : depositOp.isLoading
+                          ? "deposit-submit-hint"
+                          : undefined
+                    }
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <ArrowUpRight className="h-4 w-4" />
@@ -339,41 +338,31 @@ export function LendPageClient() {
                     handleWithdraw();
                   }}
                 >
-                  <label
-                    htmlFor="withdraw-amount"
-                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    Withdraw Amount
-                  </label>
-                  <input
+                  <AmountInput
                     id="withdraw-amount"
-                    type="text"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.0000001"
+                    label="Withdraw Amount"
                     value={withdrawAmount}
-                    onChange={(event) => setWithdrawAmount(sanitizeAmountInput(event.target.value))}
-                    aria-invalid={withdrawPrecisionError ? true : undefined}
-                    className={`w-full rounded-xl border bg-zinc-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-900 ${
-                      withdrawPrecisionError ? "border-red-500" : "border-zinc-200"
+                    onChange={setWithdrawAmount}
+                    asset="USDC"
+                    required
+                    balance={depositor?.depositAmount}
+                    balanceMessage="Withdrawal amount must not exceed your deposited balance."
+                    helperText={getAmountHelperText(withdrawAmount, "USDC")}
+                    inputClassName={`w-full rounded-xl border bg-zinc-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-900 ${
+                      withdrawAmountError ? "border-red-500" : "border-zinc-200"
                     }`}
                   />
-                  <p
-                    className={`text-xs ${
-                      withdrawPrecisionError
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-zinc-500 dark:text-zinc-400"
-                    }`}
-                  >
-                    {withdrawPrecisionError ??
-                      withdrawHelper ??
-                      "Up to 7 decimal places supported."}
-                  </p>
                   <button
                     id="withdraw-submit"
                     type="submit"
-                    disabled={withdrawalOp.isLoading || !!withdrawPrecisionError}
-                    aria-describedby={withdrawalOp.isLoading ? "withdraw-submit-hint" : undefined}
+                    disabled={withdrawalOp.isLoading || !!withdrawAmountError}
+                    aria-describedby={
+                      withdrawAmountError
+                        ? withdrawAmountErrorId
+                        : withdrawalOp.isLoading
+                          ? "withdraw-submit-hint"
+                          : undefined
+                    }
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
                     <ArrowDownLeft className="h-4 w-4" />

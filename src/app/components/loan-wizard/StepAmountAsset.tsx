@@ -2,10 +2,14 @@
 
 import { HandCoins, CircleAlert } from "lucide-react";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
 import type { LoanWizardData } from "./LoanApplicationWizard";
-import { buildAmountHelperText, getPrecisionError, sanitizeAmountInput } from "../../utils/amount";
+import {
+  AmountInput,
+  getAmountHelperText,
+  getAmountInputError,
+  getAmountInputErrorId,
+} from "../global_ui/AmountInput";
 
 const TERM_OPTIONS = [
   { label: "30 days", days: 30 as const },
@@ -42,30 +46,28 @@ interface StepAmountAssetProps {
 }
 
 export function StepAmountAsset({ data, onChange, onNext, error, onError }: StepAmountAssetProps) {
-  const amountNumber = Number(data.amount || "0");
   const minAmount = 100;
-  const precisionError = getPrecisionError(data.amount, data.asset || "USDC");
-  const helperText = buildAmountHelperText(data.amount, data.asset || "USDC");
+  const maxAmount = data.maxAmount || undefined;
+  const amountError = getAmountInputError(data.amount, {
+    asset: data.asset || "USDC",
+    required: true,
+    min: minAmount,
+    max: maxAmount,
+    minMessage: `Minimum request amount is ${formatMoney(minAmount)}.`,
+    maxMessage: `Maximum eligible amount for your score is ${formatMoney(data.maxAmount)}.`,
+  });
+  const amountErrorId = getAmountInputErrorId("loan-request-amount");
+  const ineligibleReason =
+    data.maxAmount === 0 ? "Your credit score is below 500 and is not eligible for a loan." : null;
+  const continueDisabledReason = ineligibleReason ?? amountError;
 
   const validate = (): boolean => {
-    if (!data.amount || Number.isNaN(amountNumber) || amountNumber <= 0) {
-      onError("Enter a valid loan amount.");
-      return false;
-    }
-    if (precisionError) {
-      onError(precisionError);
+    if (amountError) {
+      onError(amountError);
       return false;
     }
     if (data.maxAmount === 0) {
       onError("Your credit score is below 500 and is not eligible for a loan.");
-      return false;
-    }
-    if (amountNumber < minAmount) {
-      onError(`Minimum request amount is ${formatMoney(minAmount)}.`);
-      return false;
-    }
-    if (amountNumber > data.maxAmount) {
-      onError(`Maximum eligible amount for your score is ${formatMoney(data.maxAmount)}.`);
       return false;
     }
     onError(null);
@@ -119,27 +121,29 @@ export function StepAmountAsset({ data, onChange, onNext, error, onError }: Step
             </div>
 
             {/* Amount */}
-            <Input
+            <AmountInput
+              id="loan-request-amount"
               label={`Amount (${data.asset})`}
-              type="text"
-              inputMode="decimal"
               min={minAmount}
-              max={data.maxAmount || undefined}
+              max={maxAmount}
               value={data.amount}
-              onChange={(e) => {
-                onChange({ amount: sanitizeAmountInput(e.target.value) });
+              onChange={(value) => {
+                onChange({ amount: value });
                 onError(null);
               }}
               placeholder="1000"
+              asset={data.asset || "USDC"}
               required
+              minMessage={`Minimum request amount is ${formatMoney(minAmount)}.`}
+              maxMessage={`Maximum eligible amount for your score is ${formatMoney(data.maxAmount)}.`}
               helperText={
-                precisionError ||
-                helperText ||
-                (data.maxAmount === 0
+                data.maxAmount === 0
                   ? "Not eligible"
-                  : `Eligible range: ${formatMoney(minAmount)} – ${formatMoney(data.maxAmount)}`)
+                  : getAmountHelperText(data.amount, data.asset || "USDC")
               }
-              error={precisionError || undefined}
+              inputClassName={`flex h-10 w-full rounded-lg border bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:ring-offset-zinc-950 dark:placeholder:text-zinc-500 ${
+                amountError ? "border-red-500 focus-visible:ring-red-500" : "border-gray-200"
+              }`}
             />
 
             {/* Term */}
@@ -177,9 +181,25 @@ export function StepAmountAsset({ data, onChange, onNext, error, onError }: Step
               <span className="text-red-600">*</span> Required field
             </p>
 
-            <Button onClick={handleContinue} className="w-full">
+            <Button
+              onClick={handleContinue}
+              className="w-full"
+              disabled={!!continueDisabledReason}
+              aria-describedby={
+                continueDisabledReason
+                  ? amountError
+                    ? amountErrorId
+                    : "loan-continue-reason"
+                  : undefined
+              }
+            >
               Continue to Repayment Schedule
             </Button>
+            {ineligibleReason && (
+              <p id="loan-continue-reason" className="text-sm text-zinc-600 dark:text-zinc-400">
+                {ineligibleReason}
+              </p>
+            )}
           </CardContent>
         </Card>
 

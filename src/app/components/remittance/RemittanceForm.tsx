@@ -12,11 +12,11 @@ import { AlertCircle, Send, Loader } from "lucide-react";
 import { useCreateRemittance } from "../../hooks/useApi";
 import { toast } from "sonner";
 import {
-  buildAmountHelperText,
-  getPrecisionError,
-  parseAmount,
-  sanitizeAmountInput,
-} from "../../utils/amount";
+  AmountInput,
+  getAmountHelperText,
+  getAmountInputError,
+} from "../global_ui/AmountInput";
+import { parseAmount } from "../../utils/amount";
 
 interface RemittanceFormProps {
   onSuccess?: () => void;
@@ -31,8 +31,14 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
 
   const txPreview = useTransactionPreview();
   const mutation = useCreateRemittance();
-  const precisionError = getPrecisionError(amount, token);
-  const helperText = buildAmountHelperText(amount, token);
+  const amountError = getAmountInputError(amount, { asset: token, required: true });
+  const submitDisabledReason = mutation.isPending
+    ? "Remittance is processing - please wait."
+    : !recipientAddress || amountError
+      ? [!recipientAddress ? "Enter a recipient address." : null, amountError]
+          .filter(Boolean)
+          .join(" ")
+      : null;
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -44,15 +50,8 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
         "Invalid Stellar address format (must be 56 characters starting with G)";
     }
 
-    if (!amount) {
-      newErrors.amount = "Amount is required";
-    } else {
-      const numAmount = parseAmount(amount);
-      if (isNaN(numAmount) || numAmount <= 0) {
-        newErrors.amount = "Amount must be greater than 0";
-      } else if (precisionError) {
-        newErrors.amount = precisionError;
-      }
+    if (amountError) {
+      newErrors.amount = amountError;
     }
 
     if (memo && memo.length > 28) {
@@ -71,7 +70,7 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
   };
 
   const handleAmountChange = (value: string) => {
-    setAmount(sanitizeAmountInput(value));
+    setAmount(value);
     if (errors.amount) {
       setErrors({ ...errors, amount: "" });
     }
@@ -184,21 +183,19 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
               </p>
             </div>
 
-            <Input
+            <AmountInput
               id="amount"
               label="Amount"
-              type="text"
-              inputMode="decimal"
               placeholder="0.00"
               value={amount}
-              onChange={(e) => handleAmountChange(e.target.value)}
+              onChange={handleAmountChange}
               disabled={mutation.isPending}
+              asset={token}
               required
-              min="0"
-              step="0.0000001"
-              error={errors.amount || undefined}
-              helperText={helperText ?? "Up to 7 decimal places supported."}
-              className={errors.amount ? "border-red-600" : ""}
+              helperText={getAmountHelperText(amount, token)}
+              inputClassName={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-900 dark:border-zinc-700 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:focus:ring-indigo-400 ${
+                amountError ? "border-red-600" : "border-zinc-300"
+              }`}
             />
 
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2">
@@ -251,7 +248,8 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleReviewTransaction}
-                disabled={mutation.isPending || !recipientAddress || !amount || !!precisionError}
+                disabled={!!submitDisabledReason}
+                aria-describedby={submitDisabledReason ? "remittance-submit-reason" : undefined}
                 className="flex-1"
               >
                 {mutation.isPending ? (
@@ -267,6 +265,11 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
                 )}
               </Button>
             </div>
+            {submitDisabledReason && (
+              <p id="remittance-submit-reason" className="text-sm text-zinc-600 dark:text-zinc-400">
+                {submitDisabledReason}
+              </p>
+            )}
           </CardContent>
         </Card>
 
