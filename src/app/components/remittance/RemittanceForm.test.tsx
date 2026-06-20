@@ -167,7 +167,7 @@ describe("RemittanceForm", () => {
       "G... (Stellar public key)",
     ) as HTMLInputElement;
     const amountInput = screen.getByPlaceholderText("0.00") as HTMLInputElement;
-    const reviewButton = screen.getByText("Review & Send") as HTMLButtonElement;
+    const reviewButton = screen.getByRole("button", { name: /processing/i }) as HTMLButtonElement;
 
     expect(addressInput.disabled).toBe(true);
     expect(amountInput.disabled).toBe(true);
