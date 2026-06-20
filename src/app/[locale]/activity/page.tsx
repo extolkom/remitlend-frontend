@@ -10,7 +10,7 @@ import { QueryError } from "../../components/ui/QueryError";
 import { ActivitySkeleton } from "../../components/skeletons/ActivitySkeleton";
 import { StatusIndicator } from "../../components/ui/StatusIndicator";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { downloadCsv, rowsToCsv } from "../../utils/csv";
+import { downloadCsvAsync } from "../../utils/csv";
 
 type FilterType = "all" | "loan" | "remittance";
 
@@ -117,7 +117,7 @@ export default function ActivityPage() {
   const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedActivity = allActivity.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
-  function handleExportCsv() {
+  async function handleExportCsv() {
     const today = new Date().toISOString().split("T")[0];
     const rows = allActivity.map((item) => ({
       date: formatDate(item.timestamp),
@@ -129,7 +129,14 @@ export default function ActivityPage() {
         ? `https://stellar.expert/explorer/public/tx/${item.txHash}`
         : "",
     }));
-    downloadCsv(`remitlend-activity-${today}.csv`, rowsToCsv(rows));
+    await downloadCsvAsync(`remitlend-activity-${today}.csv`, rows, [
+      { key: "date", label: t("csv.date") },
+      { key: "type", label: t("csv.type") },
+      { key: "amount", label: t("csv.amount") },
+      { key: "status", label: t("csv.status") },
+      { key: "transactionHash", label: t("csv.transactionHash") },
+      { key: "stellarExplorerLink", label: t("csv.stellarExplorerLink") },
+    ]);
   }
 
   if (!isConnected) {
