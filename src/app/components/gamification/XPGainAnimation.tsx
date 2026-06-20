@@ -1,8 +1,17 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles } from "lucide-react";
+// framer-motion is loaded on demand — not part of the initial route JS.
+// The null fallback is intentional: the animation has no meaningful skeleton.
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
+
+const MotionDiv = dynamic(() => import("framer-motion").then((mod) => mod.motion.div), {
+  ssr: false,
+});
+const AnimatePresence = dynamic(() => import("framer-motion").then((mod) => mod.AnimatePresence), {
+  ssr: false,
+});
 
 interface XPGainAnimationProps {
   amount: number;
@@ -39,7 +48,7 @@ export function XPGainAnimation({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, scale: 0.5, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: -20 }}
@@ -47,15 +56,15 @@ export function XPGainAnimation({
           className={`fixed left-1/2 ${positionClasses[position]} z-50 -translate-x-1/2`}
         >
           <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 shadow-lg">
-            <motion.div
+            <MotionDiv
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             >
               <Sparkles size={20} className="text-yellow-300" />
-            </motion.div>
+            </MotionDiv>
             <span className="text-lg font-bold text-white">+{amount} XP</span>
           </div>
-        </motion.div>
+        </MotionDiv>
       )}
     </AnimatePresence>
   );
