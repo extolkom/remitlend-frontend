@@ -17,7 +17,7 @@ describe("AmountInput", () => {
       />,
     );
 
-    const input = screen.getByLabelText("Amount");
+    const input = screen.getByLabelText(/Amount/);
     const error = screen.getByText("USDC supports at most 7 decimal places.");
 
     expect(input).toHaveAttribute("aria-invalid", "true");

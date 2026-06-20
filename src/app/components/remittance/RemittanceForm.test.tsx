@@ -80,7 +80,7 @@ describe("RemittanceForm", () => {
     render(<RemittanceForm onSuccess={mockOnSuccess} />);
 
     const addressInput = screen.getByPlaceholderText("G... (Stellar public key)");
-    await user.type(addressInput, "GBUQWP3BOUZX34ULNQG23RQ6F4BVWCIBTLFL2F7HVRQG5LDHNWY2QTW");
+    await user.type(addressInput, "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37");
 
     const reviewButton = screen.getByText("Review & Send");
 
@@ -93,7 +93,7 @@ describe("RemittanceForm", () => {
     render(<RemittanceForm onSuccess={mockOnSuccess} />);
 
     const addressInput = screen.getByPlaceholderText("G... (Stellar public key)");
-    await user.type(addressInput, "GBUQWP3BOUZX34ULNQG23RQ6F4BVWCIBTLFL2F7HVRQG5LDHNWY2QTW");
+    await user.type(addressInput, "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37");
 
     const amountInput = screen.getByPlaceholderText("0.00");
     await user.type(amountInput, "0");
@@ -110,15 +110,17 @@ describe("RemittanceForm", () => {
 
     await user.type(
       screen.getByPlaceholderText("G... (Stellar public key)"),
-      "GBUQWP3BOUZX34ULNQG23RQ6F4BVWCIBTLFL2F7HVRQG5LDHNWY2QTW",
+      "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37",
     );
     await user.type(screen.getByPlaceholderText("0.00"), "10");
 
     const memoInput = screen.getByPlaceholderText(
       "Add a note for the recipient (max 28 characters)",
     );
+    // The textarea enforces maxLength=28, which userEvent.type respects, so set the
+    // value directly to exercise the validateForm backstop for over-length memos.
     const longMemo = "This is a very long memo that exceeds the limit";
-    await user.type(memoInput, longMemo);
+    fireEvent.change(memoInput, { target: { value: longMemo } });
 
     const reviewButton = screen.getByText("Review & Send");
     fireEvent.click(reviewButton);
